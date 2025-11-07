@@ -1,0 +1,5 @@
+{
+  "name": "WatchTracker",
+  "description": "A fully responsive Watchlist Tracker Web Application to track your favorite anime, movies, and series. Features real-time sync across devices and an AI-powered 'Smart Paste' functionality to add multiple items at once.",
+  "requestFramePermissions": []
+}

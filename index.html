@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WatchTracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: 'hsl(0 0% 100%)', // White
+              foreground: 'hsl(240 10% 3.9%)', // Almost Black
+              card: {
+                DEFAULT: 'hsl(0 0% 100%)',
+                foreground: 'hsl(240 10% 3.9%)',
+              },
+              primary: {
+                DEFAULT: 'hsl(240 5.9% 10%)',
+                foreground: 'hsl(0 0% 98%)',
+              },
+              secondary: {
+                DEFAULT: 'hsl(240 4.8% 95.9%)',
+                foreground: 'hsl(240 5.9% 10%)',
+              },
+              destructive: {
+                DEFAULT: 'hsl(0 84.2% 60.2%)',
+                foreground: 'hsl(0 0% 98%)',
+              },
+              muted: {
+                DEFAULT: 'hsl(240 4.8% 95.9%)',
+                foreground: 'hsl(240 3.8% 46.1%)',
+              },
+              accent: {
+                DEFAULT: 'hsl(240 4.8% 95.9%)',
+                foreground: 'hsl(240 5.9% 10%)',
+              },
+              border: 'hsl(240 5.9% 90%)',
+              input: 'hsl(240 5.9% 90%)',
+              ring: 'hsl(240 5.9% 10%)',
+            },
+            borderRadius: {
+              '2xl': '1rem',
+            },
+            animation: {
+              'glow-neutral': 'glow-neutral 2.5s ease-out forwards',
+              'glow-anime': 'glow-anime 2.5s ease-out forwards',
+            },
+            keyframes: {
+              'glow-neutral': {
+                '0%': { boxShadow: '0 0 0px transparent' },
+                '50%': { boxShadow: '0 0 15px 3px hsl(145 63% 49% / 0.6)' },
+                '100%': { boxShadow: '0 0 0px transparent' },
+              },
+              'glow-anime': {
+                '0%': { boxShadow: '0 0 0px transparent' },
+                '50%': { boxShadow: '0 0 15px 3px hsl(221 83% 53% / 0.6)' },
+                '100%': { boxShadow: '0 0 0px transparent' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+      /* Add chevron to select dropdowns */
+      .bg-chevron {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.78.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-background text-foreground">
+    <div id="root"></div>
+    <script>
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // Construct an absolute URL for the service worker to avoid origin mismatches in complex hosting environments.
+          const swUrl = `${window.location.origin}/service-worker.js`;
+          navigator.serviceWorker.register(swUrl)
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+      }
+    </script>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
