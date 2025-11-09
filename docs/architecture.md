@@ -25,23 +25,23 @@ This document outlines the architecture of the WatchTracker application, a moder
 
 The frontend is a single-page application (SPA) built with React.
 
-### Key Files & Components
-
-- **`index.tsx`**: The application's entry point. Renders the main `App` component into the DOM.
-- **`App.tsx`**: The root component. It manages:
-  - **Global State**: Uses `React.Context` (`AppContext`) to provide state and actions (watchlist data, user session, CRUD functions) to the entire component tree.
-  - **Authentication**: Handles user session logic, displaying `AuthPage` or the main app.
-  - **Routing**: A simple view switcher (`'home' | 'watchlist'`) manages which page is displayed.
-  - **Real-time Listener**: Establishes and manages the Supabase real-time subscription.
-  - **Modals & Toasts**: Controls global UI elements like confirmation modals, edit modals, and toast notifications.
-- **`HomePage.tsx`**: The landing page. Features a welcome message, search bar, statistics cards, and forms for adding new items.
-- **`WatchlistPage.tsx`**: The main view for displaying, filtering, sorting, and managing watchlist items.
-- **`WatchlistItemCard.tsx`**: A reusable component to display a single watchlist item with all its details and action buttons (edit, delete, favorite, copy).
-- **Forms (`ManualPasteForm`, `SmartPasteForm`)**: Components for adding items, one for single entries and another for bulk parsing.
-- **Modals (`EditItemModal`, `ConfirmationModal`, etc.)**: Reusable modals for editing items, confirming actions, and previewing smart paste results.
-- **`components/Icons.tsx`**: An icon library component that renders different SVGs based on a `name` prop.
-- **`services/supabase.ts`**: Initializes and exports the Supabase client instance.
-- **`utils/smartPasteParser.ts`**: Contains the logic for parsing raw text into structured `NewWatchlistItem` objects.
+- **Application Type**: The application is a Progressive Web App (PWA), making it installable on user devices for a native-like experience with persistent offline storage.
+- **Key Files & Components**:
+  - **`index.tsx`**: The application's entry point. Renders the main `App` component into the DOM.
+  - **`App.tsx`**: The root component. It manages:
+    - **Global State**: Uses `React.Context` (`AppContext`) to provide state and actions (watchlist data, user session, CRUD functions) to the entire component tree.
+    - **Authentication**: Handles user session logic, displaying `AuthPage` or the main app.
+    - **Routing**: A simple view switcher (`'home' | 'watchlist'`) manages which page is displayed.
+    - **Real-time Listener**: Establishes and manages the Supabase real-time subscription.
+    - **Modals & Toasts**: Controls global UI elements like confirmation modals, edit modals, and toast notifications.
+  - **`HomePage.tsx`**: The landing page. Features a welcome message, search bar, statistics cards, and forms for adding new items.
+  - **`WatchlistPage.tsx`**: The main view for displaying, filtering, sorting, and managing watchlist items.
+  - **`WatchlistItemCard.tsx`**: A reusable component to display a single watchlist item with all its details and action buttons (edit, delete, favorite, copy).
+  - **Forms (`ManualPasteForm`, `SmartPasteForm`)**: Components for adding items, one for single entries and another for bulk parsing.
+  - **Modals (`EditItemModal`, `ConfirmationModal`, etc.)**: Reusable modals for editing items, confirming actions, and previewing smart paste results.
+  - **`components/Icons.tsx`**: An icon library component that renders different SVGs based on a `name` prop.
+  - **`services/supabase.ts`**: Initializes and exports the Supabase client instance.
+  - **`utils/smartPasteParser.ts`**: Contains the logic for parsing raw text into structured `NewWatchlistItem` objects.
 
 ### State Management
 

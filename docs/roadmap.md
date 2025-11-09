@@ -6,6 +6,9 @@ This document tracks the development history and future plans for the WatchTrack
 
 The following features have been implemented and are currently in production.
 
+- **[2024-07-31] Progressive Web App (PWA) Conversion**
+  - **Summary**: Converted the application into a Progressive Web App. The app can now be "installed" on mobile and desktop devices, running in its own standalone window for an app-like experience. This also ensures that the local database (IndexedDB) is persistent and not cleared with browser history, making the offline/online sync feature much more robust.
+  - **Result**: The app now offers the permanence and convenience of a native application, solving the core issue of data loss when clearing browser history.
 - **[2024-07-26] Core Application Setup & Features**
   - **User Authentication**: Secure sign-up, sign-in, and sign-out functionality using Supabase Auth.
   - **Watchlist CRUD**: Full Create, Read, Update, and Delete functionality for watchlist items.
@@ -49,4 +52,4 @@ The following is a list of potential features and improvements for future versio
 - **Sharing**: Allow users to share their watchlist with others via a public link.
 - **Reminders/Notifications**: Set reminders for upcoming episodes or new season releases.
 - **Advanced Statistics**: A dedicated dashboard with more detailed stats and visualizations about viewing habits.
-- **Full Offline Support**: Implement a service worker and local database (e.g., IndexedDB) to allow full application functionality while offline, with actions synced upon reconnection.
+- **Virtualization**: For users with very large watchlists (200+ items), implement list virtualization to maintain high performance.

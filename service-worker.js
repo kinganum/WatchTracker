@@ -1,8 +1,8 @@
-const CACHE_NAME = 'watchtracker-cache-v1';
+const CACHE_NAME = 'watchtracker-cache-v2';
 const APP_SHELL_URLS = [
   '/',
-  '/index.html'
-  // JS, CSS, and other assets are cached dynamically on first fetch.
+  '/index.html',
+  '/index.tsx'
 ];
 
 self.addEventListener('install', event => {
@@ -28,6 +28,7 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  return self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
@@ -48,14 +49,14 @@ self.addEventListener('fetch', event => {
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(response => {
         const fetchPromise = fetch(event.request).then(networkResponse => {
-          // Don't cache failed requests or non-OK responses
-          if (networkResponse && networkResponse.ok) {
+          // Don't cache failed requests or non-OK responses that are not opaque
+          if (networkResponse && (networkResponse.ok || networkResponse.type === 'opaque')) {
               cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
         }).catch(err => {
             // This will be called when the network is down
-            console.warn('Fetch failed; returning offline page instead.', err);
+            console.warn('Fetch failed; returning cached response instead.', err);
             return response; // Return the cached response if fetch fails
         });
         // Return cached response immediately if available, and fetch update in background.

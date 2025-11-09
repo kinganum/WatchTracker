@@ -1,4 +1,3 @@
-// FIX: Correct import syntax for React hooks
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import { Session, User } from '@supabase/supabase-js';

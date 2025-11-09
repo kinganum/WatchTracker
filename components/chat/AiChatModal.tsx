@@ -3,6 +3,7 @@ import { useAppContext } from '../../contexts/AppContext';
 import { ChatMessage, MediaDetails, NewWatchlistItem, ItemType, SubType, Status, Language, ReleaseType } from '../../types';
 import { getMediaDetailsFromAi, getConversationalResponse, getSuggestionsFromAi, getMediaByPersonFromAi } from '../../services/geminiService';
 import { Icon } from '../ui/Icons';
+import { parseReleaseDate } from '../../utils/textFormatters';
 
 // Sub-component to display formatted media details
 const MediaDetailsDisplay: React.FC<{ 
@@ -228,6 +229,18 @@ export const AiChatModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
             }
         }
 
+        const languageText = details.language.toLowerCase();
+        const detectedLanguage = (languageText.includes('sub') || languageText.includes('japanese')) ? Language.SUB : Language.DUB;
+        
+        let detectedReleaseType = ReleaseType.NEW;
+        const releaseDate = parseReleaseDate(details.release_date);
+        if (releaseDate) {
+            const currentYear = new Date().getFullYear();
+            if (releaseDate.getFullYear() < currentYear) {
+                detectedReleaseType = ReleaseType.OLD;
+            }
+        }
+
         const newItem: NewWatchlistItem = {
             title: details.name,
             type: newItemType,
@@ -235,8 +248,8 @@ export const AiChatModal: React.FC<{ isOpen: boolean; onClose: () => void }> = (
             status: Status.WATCH,
             season: seasonNumber,
             part: partNumber,
-            language: Language.DUB,
-            release_type: ReleaseType.NEW,
+            language: detectedLanguage,
+            release_type: detectedReleaseType,
         };
 
         const newId = await addItem(newItem);

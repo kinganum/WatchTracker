@@ -83,24 +83,7 @@ const Column = ({ title, items, isLoading, isFetchTriggered, onFetch }: { title:
 
 export const UpdatesPage = () => {
     const { watchlist, loading, isOnline, showToast } = useAppContext();
-    
-    const [fetchTriggered, setFetchTriggered] = useState(() => {
-        // FIX: Restore individual fetch state for each category from sessionStorage.
-        try {
-            const storedState = sessionStorage.getItem('updatesFetchState');
-            if (storedState) {
-                return JSON.parse(storedState);
-            }
-        } catch (e) {
-            console.error("Could not parse updates fetch state from sessionStorage", e);
-        }
-        return { anime: false, tvSeries: false, movies: false };
-    });
-
-    // FIX: Persist the fetch state to sessionStorage whenever it changes.
-    useEffect(() => {
-        sessionStorage.setItem('updatesFetchState', JSON.stringify(fetchTriggered));
-    }, [fetchTriggered]);
+    const [fetchTriggered, setFetchTriggered] = useState({ anime: false, tvSeries: false, movies: false });
 
     const categorizedItems = useMemo(() => {
         const anime: WatchlistItem[] = [];
@@ -119,12 +102,53 @@ export const UpdatesPage = () => {
 
         return { anime, tvSeries, movies };
     }, [watchlist]);
+    
+    // Effect to check for stale fetched state when the underlying watchlist changes.
+    useEffect(() => {
+        try {
+            const storedIdsRaw = sessionStorage.getItem('updatesFetchedIds');
+            const storedIds = storedIdsRaw ? JSON.parse(storedIdsRaw) : {};
+
+            const createIdString = (items: WatchlistItem[]) => items.map(i => i.id).sort().join(',');
+
+            const animeIds = createIdString(categorizedItems.anime);
+            const tvSeriesIds = createIdString(categorizedItems.tvSeries);
+            const moviesIds = createIdString(categorizedItems.movies);
+
+            // If the current list of IDs matches what we last fetched, consider it fetched. Otherwise, the state is stale.
+            const isAnimeFetched = animeIds.length > 0 && storedIds.anime === animeIds;
+            const isTvSeriesFetched = tvSeriesIds.length > 0 && storedIds.tvSeries === tvSeriesIds;
+            const isMoviesFetched = moviesIds.length > 0 && storedIds.movies === moviesIds;
+
+            setFetchTriggered({
+                anime: isAnimeFetched,
+                tvSeries: isTvSeriesFetched,
+                movies: isMoviesFetched,
+            });
+
+        } catch (e) {
+            console.error("Could not process updates fetch state", e);
+            sessionStorage.removeItem('updatesFetchedIds');
+        }
+    }, [categorizedItems]);
 
     const handleFetch = (category: 'anime' | 'tvSeries' | 'movies') => {
         if (!isOnline) {
             showToast('You are offline. Showing cached updates where available.', 'success');
         }
         setFetchTriggered(prev => ({ ...prev, [category]: true }));
+        
+        // Persist the IDs of the items we just fetched for
+        try {
+            const storedIdsRaw = sessionStorage.getItem('updatesFetchedIds');
+            const storedIds = storedIdsRaw ? JSON.parse(storedIdsRaw) : {};
+            const createIdString = (items: WatchlistItem[]) => items.map(i => i.id).sort().join(',');
+            
+            storedIds[category] = createIdString(categorizedItems[category]);
+            sessionStorage.setItem('updatesFetchedIds', JSON.stringify(storedIds));
+        } catch (e) {
+             console.error("Could not save updates fetch state", e);
+        }
     };
 
     const handleFetchAll = () => {
@@ -136,6 +160,18 @@ export const UpdatesPage = () => {
             tvSeries: true,
             movies: true,
         });
+
+        try {
+            const createIdString = (items: WatchlistItem[]) => items.map(i => i.id).sort().join(',');
+            const newFetchedIds = {
+                anime: createIdString(categorizedItems.anime),
+                tvSeries: createIdString(categorizedItems.tvSeries),
+                movies: createIdString(categorizedItems.movies),
+            };
+            sessionStorage.setItem('updatesFetchedIds', JSON.stringify(newFetchedIds));
+        } catch (e) {
+             console.error("Could not save updates fetch state for all categories", e);
+        }
     };
 
     const isAnyFetchTriggered = fetchTriggered.anime || fetchTriggered.tvSeries || fetchTriggered.movies;

@@ -1,4 +1,3 @@
-// FIX: Import GenerateContentResponse to correctly type API responses.
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { WatchlistItem, ItemType, UpcomingRelease, SubType, MediaDetails } from "../types";
 
@@ -142,7 +141,6 @@ Your goal is to find the *true next installment* for the user, regardless of tit
 
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
-            // FIX: Explicitly type the response from generateContent.
             const response: GenerateContentResponse = await throttledExecutor(() => ai.models.generateContent({
                 model,
                 contents: prompt,

@@ -1,0 +1,28 @@
+{
+  "name": "WatchTracker",
+  "short_name": "WatchTracker",
+  "description": "A fully responsive Watchlist Tracker Web Application to track your favorite anime, movies, and series. Features real-time sync across devices and an AI-powered 'Smart Paste' functionality to add multiple items at once.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#17181a",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

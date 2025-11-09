@@ -2,7 +2,14 @@
 
 This document outlines the strategies and best practices implemented to ensure the WatchTracker application provides a first-class user experience on mobile devices.
 
-## 1. Responsive Layout Strategy
+## 1. Progressive Web App (PWA) for Offline Persistence
+
+The application is a PWA, which significantly enhances the mobile experience. This means:
+- **Installable**: Users can add WatchTracker to their home screen from their mobile browser, allowing it to launch full-screen like a native app.
+- **Persistent Storage**: The app's offline data, stored in IndexedDB, is not cleared when the user clears their general browser history. This makes the offline mode and sync queue robust and reliable, ensuring no data is lost.
+- **Offline Access**: Thanks to the service worker, the application shell loads instantly, even without an internet connection.
+
+## 2. Responsive Layout Strategy
 
 The application follows a **mobile-first** design philosophy using Tailwind CSS's responsive utility variants (`sm`, `md`, `lg`).
 
@@ -16,7 +23,7 @@ The application follows a **mobile-first** design philosophy using Tailwind CSS'
   - **Filter Controls**: The filter bar stacks into a single, easy-to-use vertical layout on mobile. On `md` screens and up, it becomes a horizontal, wrapping row. Filter dropdowns and buttons become full-width on mobile for easier interaction.
   - **Forms**: The `ManualPasteForm` and `SmartPasteForm` on the homepage are arranged in a 2-column layout on `lg` screens but stack vertically on smaller devices.
 
-## 2. Touch Targets & Interaction
+## 3. Touch Targets & Interaction
 
 To ensure usability on touch devices, all interactive elements adhere to mobile guidelines.
 
@@ -24,20 +31,19 @@ To ensure usability on touch devices, all interactive elements adhere to mobile 
 - **Tactile Feedback**: To provide immediate feedback upon interaction, `active:scale-95` and other `active:` variants are used on buttons. This gives a satisfying "press" effect.
 - **Mobile-Friendly Forms**: Numeric inputs (`season`, `episode`, `part`) use `type="number"` and `inputMode="numeric"` to trigger the appropriate mobile keyboard, simplifying data entry.
 
-## 3. Performance & Perceived Speed
+## 4. Performance & Perceived Speed
 
 - **Component Memoization**: `React.memo` is used on the `WatchlistItemCard` component. Since the watchlist can grow large, this prevents unnecessary re-renders of list items that haven't changed, significantly improving performance during filtering, sorting, or real-time updates.
 - **Optimistic UI**: The application's existing optimistic UI pattern is crucial for a fast perceived performance on mobile, where network latency can be higher.
 - **Smooth Animations**: Animations are kept minimal and use performant CSS properties (`transform`, `opacity`). The highlight-on-add animation provides a clear visual cue without causing layout shifts.
 
-## 4. Accessibility
+## 5. Accessibility
 
 - **Reduced Motion**: A global CSS rule is in place to respect the `prefers-reduced-motion` media query. If a user has this setting enabled, all non-essential animations and transitions are disabled.
 - **ARIA Attributes**:
   - Toast notifications are wrapped in a `div` with `role="status"` and `aria-live="polite"` to ensure they are announced by screen readers.
   - Interactive elements like status filters use `aria-pressed` to indicate their current state.
 
-## 5. Future Considerations
+## 6. Future Considerations
 
-- **Full Offline Support**: While the current app is resilient to brief network interruptions, a full offline mode (using a service worker and IndexedDB) is a planned feature. This would allow users to add, edit, and delete items while completely offline and have the changes sync automatically upon reconnection.
 - **Virtualization**: If user watchlists are expected to commonly exceed ~150-200 items, implementing a virtualized list (e.g., with TanStack Virtual) would be the next step to maintain high performance.

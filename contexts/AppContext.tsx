@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../services/supabase';
 import { User } from '@supabase/supabase-js';
-// FIX: Import the 'SyncAction' type.
 import { WatchlistItem, NewWatchlistItem, AppContextType, ConfirmationConfig, SyncAction } from '../types';
 import * as db from '../services/db';
 import { formatTitle } from '../utils/textFormatters';
@@ -128,10 +127,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
             setHighlightedIds(current => current.filter(id => !newIds.includes(id)));
         } else if (data) {
              setWatchlist(current => {
-                const updatedList = current.filter(i => !newIds.includes(i.id));
-                // Prepend the newly added items from the server.
-                // Do not re-sort the entire list, to respect the user's current sort preference.
-                return [...data, ...updatedList];
+                const dataMap = new Map(data.map(item => [item.id, item as WatchlistItem]));
+                const newIdsSet = new Set(newIds);
+                return current
+                    .map(item => {
+                        if (newIdsSet.has(item.id)) {
+                            // If it's a new item, replace with server data if available, otherwise it will be filtered out.
+                            return dataMap.get(item.id);
+                        }
+                        // Keep existing items.
+                        return item;
+                    })
+                    .filter((item): item is WatchlistItem => !!item);
             });
             showToast(`${data.length} items added successfully.`, 'success');
         }
@@ -393,10 +400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
                         const newItem = payload.new as WatchlistItem;
                         setWatchlist(current => {
                             if (!current.some(item => item.id === newItem.id)) {
-                                // FIX: Removed global sort. The new item is prepended, and the
-                                // WatchlistPage's local sorting logic will apply the user's
-                                // current sort preference without a jarring global re-order.
-                                return [newItem, ...current];
+                                return [...current, newItem];
                             }
                             return current;
                         });

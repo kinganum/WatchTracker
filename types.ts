@@ -88,7 +88,7 @@ export type MediaDetails = {
     type: 'Movie' | 'TV Series' | 'Anime Series' | 'Anime Movie' | 'Unknown';
     sub_type: 'Anime' | 'Hollywood' | 'Bollywood' | 'Tollywood' | 'Kollywood' | 'Korean' | 'Japanese' | 'Turkish' | 'Chinese' | 'Sandalwood' | 'Unknown';
     season_sequel: string;
-    count: number; // FIX: Add a reliable numeric count for seasons/parts.
+    count: number;
     episodes: string;
     part: string;
     genre: string;
