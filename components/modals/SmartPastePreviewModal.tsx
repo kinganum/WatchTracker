@@ -4,27 +4,27 @@ import { Icon } from '../ui/Icons';
 
 type ParsedResult = { toAdd: NewWatchlistItem[], duplicates: NewWatchlistItem[], unparsable: string[] };
 
+const PreviewItem: React.FC<{item: NewWatchlistItem}> = ({ item }) => {
+    const details = [
+        item.type, item.sub_type, item.status, item.language,
+        item.season ? `S${item.season}` : '',
+        item.episode ? `E${item.episode}` : '',
+        item.part ? `P${item.part}` : ''
+    ].filter(Boolean).join(' · ');
+    return (
+         <div className="p-3 bg-background rounded-md border border-border">
+            <p className="font-semibold text-foreground truncate">{item.title}</p>
+            <p className="text-sm text-muted-foreground truncate">{details}</p>
+        </div>
+    )
+};
+
 export const SmartPastePreviewModal: React.FC<{
     result: ParsedResult;
     onClose: () => void;
     onConfirm: () => void;
 }> = ({ result, onClose, onConfirm }) => {
     
-    const PreviewItem: React.FC<{item: NewWatchlistItem}> = ({ item }) => {
-        const details = [
-            item.type, item.sub_type, item.status, item.language,
-            item.season ? `S${item.season}` : '',
-            item.episode ? `E${item.episode}` : '',
-            item.part ? `P${item.part}` : ''
-        ].filter(Boolean).join(' · ');
-        return (
-             <div className="p-3 bg-background rounded-md border border-border">
-                <p className="font-semibold text-foreground truncate">{item.title}</p>
-                <p className="text-sm text-muted-foreground truncate">{details}</p>
-            </div>
-        )
-    }
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
             <div className="bg-card rounded-xl shadow-lg p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">

@@ -1,16 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../services/supabase';
 import { User } from '@supabase/supabase-js';
+// FIX: Import the 'SyncAction' type.
 import { WatchlistItem, NewWatchlistItem, AppContextType, ConfirmationConfig, SyncAction } from '../types';
 import * as db from '../services/db';
-
-// --- Helper Functions ---
-export const formatTitle = (string: string): string => {
-    if (!string) return '';
-    const trimmed = string.trimStart(); // Allow trailing spaces while typing
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-};
-
+import { formatTitle } from '../utils/textFormatters';
 
 const AppContext = createContext<AppContextType | null>(null);
 
@@ -25,7 +19,7 @@ export const useAppContext = () => {
 export const AppProvider: React.FC<{ children: React.ReactNode, user: User | null }> = ({ children, user }) => {
     const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
     const [appLoading, setAppLoading] = useState(true);
-    const [view, setView] = useState<'home' | 'watchlist'>('home');
+    const [view, setView] = useState<'home' | 'watchlist' | 'updates'>('home');
     const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null);
     const [geminiItem, setGeminiItem] = useState<WatchlistItem | null>(null);
     const [highlightedIds, setHighlightedIds] = useState<string[]>([]);
@@ -34,6 +28,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
     const [confirmation, setConfirmation] = useState<ConfirmationConfig | null>(null);
     const [scrollToId, setScrollToId] = useState<string | null>(null);
     const [initialListFilter, setInitialListFilter] = useState<'favorites' | null>(null);
+    const [isAiChatOpen, setIsAiChatOpen] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isSyncing, setIsSyncing] = useState(false);
     const [pendingSyncIds, setPendingSyncIds] = useState<string[]>([]);
@@ -50,7 +45,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
             if (action.type === 'ADD') ids.add(action.payload.id);
             if (action.type === 'ADD_MULTIPLE') action.payload.forEach((p: any) => ids.add(p.id));
             if (action.type === 'UPDATE' || action.type === 'DELETE') ids.add(action.payload.id);
-            if (action.type === 'DELETE_MULTIPLE') action.payload.ids.forEach((id: string) => ids.add(id));
+            if (action.type === 'DELETE_MULTIPLE') action.payload.forEach((id: string) => ids.add(id));
         });
         setPendingSyncIds(Array.from(ids));
     };
@@ -61,7 +56,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
         const normTitle = item.title.trim().toLowerCase();
         const normType = item.type.trim().toLowerCase();
         if (watchlist.some(i => i.title.trim().toLowerCase() === normTitle && i.type.trim().toLowerCase() === normType)) {
-            showToast('Duplicate: This title and type already exist.', 'error');
+            showToast('This item is already in your watchlist.', 'success');
             return undefined;
         }
 
@@ -134,7 +129,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
         } else if (data) {
              setWatchlist(current => {
                 const updatedList = current.filter(i => !newIds.includes(i.id));
-                return [...data, ...updatedList].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                // Prepend the newly added items from the server.
+                // Do not re-sort the entire list, to respect the user's current sort preference.
+                return [...data, ...updatedList];
             });
             showToast(`${data.length} items added successfully.`, 'success');
         }
@@ -249,12 +246,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
         setPendingSyncIds(current => [...current, ...ids]);
         
         if (!isOnline) {
-            for (const id of ids) { // Process one by one to leverage single delete's queue logic
-                const newWl = watchlist.filter(item => item.id !== id);
-                await db.saveWatchlist(newWl);
-                // The rest of deleteItem logic for queuing... simplified here
-                await db.addActionToQueue({ type: 'DELETE', payload: { id } });
-            }
+            await db.saveWatchlist(newWatchlist);
+            await db.addActionToQueue({ type: 'DELETE_MULTIPLE', payload: ids });
             showToast(`${ids.length} items removed locally. Will sync when online.`, 'success');
             return;
         }
@@ -269,7 +262,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
         } else {
             showToast(`${ids.length} items deleted.`, 'success');
         }
-    }, [watchlist, showToast, isOnline, deleteItem]);
+    }, [watchlist, showToast, isOnline]);
     
     const syncOfflineChanges = useCallback(async () => {
         if (!user || !isOnline || isSyncing) return;
@@ -300,20 +293,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
                 } else if (action.type === 'UPDATE') {
                     const { id, updates } = action.payload;
                     const { error } = await supabase.from('watchlist').update(updates).eq('id', id);
-                    if (error) throw error;
+                    if (error && error.code !== 'PGRST116') throw error;
                 } else if (action.type === 'DELETE') {
                     const { id } = action.payload;
                     const { error } = await supabase.from('watchlist').delete().eq('id', id);
-                    if (error) throw error;
+                    if (error && error.code !== 'PGRST116') throw error;
+                } else if (action.type === 'DELETE_MULTIPLE') {
+                    const ids = action.payload;
+                    const { error } = await supabase.from('watchlist').delete().in('id', ids);
+                    if (error) throw error; // .in() does not error for missing rows
                 }
                 
                 await db.removeActionFromQueue(action.id);
-            } catch(error) {
+            } catch(error: any) {
                 console.error(`Failed to sync action ${action.id} (${action.type}):`, error);
-                showToast(`Failed to sync some changes. Please refresh.`, 'error');
-                setIsSyncing(false);
-                await updatePendingSyncIds();
-                return;
+                // If an item was deleted on another device, Supabase might return a "not found" error.
+                // We can safely ignore this and remove the action from the queue.
+                if (error.code === 'PGRST116') { // "The resource was not found"
+                     console.warn(`Action ${action.id} (${action.type}) failed because item was not found. Assuming it was deleted elsewhere. Skipping.`);
+                     await db.removeActionFromQueue(action.id);
+                } else {
+                    showToast(`Failed to sync some changes. Please refresh.`, 'error');
+                    setIsSyncing(false);
+                    await updatePendingSyncIds();
+                    return; // Halt on other errors
+                }
             }
         }
         
@@ -369,7 +373,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
             }
         };
         initializeApp();
-    }, [user]);
+    }, [user, syncOfflineChanges]);
     
     useEffect(() => {
         if (!user || !isOnline) return;
@@ -389,7 +393,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
                         const newItem = payload.new as WatchlistItem;
                         setWatchlist(current => {
                             if (!current.some(item => item.id === newItem.id)) {
-                                return [newItem, ...current].sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                                // FIX: Removed global sort. The new item is prepended, and the
+                                // WatchlistPage's local sorting logic will apply the user's
+                                // current sort preference without a jarring global re-order.
+                                return [newItem, ...current];
                             }
                             return current;
                         });
@@ -438,6 +445,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode, user: User | nul
         setInitialSearch,
         toast,
         confirmation,
+        isAiChatOpen,
+        setIsAiChatOpen,
         isOnline,
         isSyncing,
         pendingSyncIds,

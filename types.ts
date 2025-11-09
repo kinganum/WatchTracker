@@ -9,11 +9,13 @@ export enum SubType {
     ANIME = 'Anime',
     BOLLYWOOD = 'Bollywood',
     HOLLYWOOD = 'Hollywood',
-    ASIAN = 'Asian',
+    KOREAN = 'Korean',
+    JAPANESE = 'Japanese',
     TURKISH = 'Turkish',
     TOLLYWOOD = 'Tollywood',
     KOLLYWOOD = 'Kollywood',
     SANDALWOOD = 'Sandalwood',
+    CHINESE = 'Chinese',
 }
 
 export enum Status {
@@ -67,6 +69,46 @@ export type SyncAction = {
     timestamp: number;
 };
 
+export type UpcomingRelease = {
+    new_title: string;
+    next_installment: string; // e.g., "Season 5" or "Part II"
+    release_date: string; // e.g., "Late 2024", "2024-12-25", "TBA"
+    platform: string;
+    status: 'Confirmed' | 'Rumored' | 'No Update Found';
+};
+
+export type UpdateCacheEntry = {
+    itemId: string;
+    data: UpcomingRelease;
+    timestamp: number;
+};
+
+export type MediaDetails = {
+    name: string;
+    type: 'Movie' | 'TV Series' | 'Anime Series' | 'Anime Movie' | 'Unknown';
+    sub_type: 'Anime' | 'Hollywood' | 'Bollywood' | 'Tollywood' | 'Kollywood' | 'Korean' | 'Japanese' | 'Turkish' | 'Chinese' | 'Sandalwood' | 'Unknown';
+    season_sequel: string;
+    count: number; // FIX: Add a reliable numeric count for seasons/parts.
+    episodes: string;
+    part: string;
+    genre: string;
+    cast: string[];
+    release_date: string;
+    end_date: string;
+    upcoming_date: string;
+    language: string;
+    platform: string;
+    continuity: string;
+};
+
+export type ChatMessage = {
+    role: 'user' | 'model';
+    content: string;
+    mediaDetails?: MediaDetails;
+    mediaSuggestions?: MediaDetails[];
+    promptSuggestions?: string[];
+};
+
 
 export type AppContextType = {
     user: User | null;
@@ -87,14 +129,16 @@ export type AppContextType = {
     setConfirmation: (config: ConfirmationConfig | null) => void;
     setScrollToId: (id: string | null) => void;
     scrollToId: string | null;
-    view: 'home' | 'watchlist';
-    setView: (view: 'home' | 'watchlist') => void;
+    view: 'home' | 'watchlist' | 'updates';
+    setView: (view: 'home' | 'watchlist' | 'updates') => void;
     initialListFilter: 'favorites' | null;
     setInitialListFilter: (filter: 'favorites' | null) => void;
     initialSearch: string;
     setInitialSearch: (query: string) => void;
     toast: { message: string; type: 'success' | 'error' } | null;
     confirmation: ConfirmationConfig | null;
+    isAiChatOpen: boolean;
+    setIsAiChatOpen: (isOpen: boolean) => void;
     isOnline: boolean;
     isSyncing: boolean;
     pendingSyncIds: string[];

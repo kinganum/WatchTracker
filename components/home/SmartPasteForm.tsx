@@ -13,7 +13,7 @@ export const SmartPasteForm = () => {
     const [loading, setLoading] = useState(false);
     const [preview, setPreview] = useState<ParsedResult | null>(null);
     
-    const handleSubmit = async () => {
+    const handleSubmit = () => {
         if (!text.trim()) return;
         setLoading(true);
         try {
@@ -32,20 +32,22 @@ export const SmartPasteForm = () => {
     };
     
     const handleConfirmPreview = async () => {
-        if (!preview || preview.toAdd.length === 0) {
-            if (preview && preview.duplicates.length > 0) {
-                 showToast(`Skipped ${preview.duplicates.length} duplicate(s).`, 'success');
-            }
-            setPreview(null);
-            setText('');
-            return;
-        };
+        if (!preview) return;
 
-        await addMultipleItems(preview.toAdd);
+        if (preview.toAdd.length > 0) {
+            await addMultipleItems(preview.toAdd);
+            setView('watchlist');
+        } else if (preview.duplicates.length > 0) {
+            showToast(`Skipped ${preview.duplicates.length} duplicate(s).`, 'success');
+        }
         
         setText('');
         setPreview(null);
-        setView('watchlist');
+    };
+
+    const handleClosePreview = () => {
+        setPreview(null);
+        setText('');
     };
 
     return (
@@ -72,7 +74,7 @@ export const SmartPasteForm = () => {
             {preview && (
                 <SmartPastePreviewModal
                     result={preview}
-                    onClose={() => setPreview(null)}
+                    onClose={handleClosePreview}
                     onConfirm={handleConfirmPreview}
                 />
             )}

@@ -1,9 +1,11 @@
+// FIX: Correct import syntax for React hooks
 import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { HomePage } from './pages/HomePage';
 import { WatchlistPage } from './pages/WatchlistPage';
+import { UpdatesPage } from './pages/UpdatesPage';
 import { AuthPage } from './components/auth/AuthPage';
 import { Header } from './components/common/Header';
 import { Footer } from './components/common/Footer';
@@ -11,10 +13,12 @@ import { EditItemModal } from './components/modals/EditItemModal';
 import { ConfirmationModal } from './components/common/ConfirmationModal';
 import { GeminiModal } from './components/modals/GeminiModal';
 import { Icon } from './components/ui/Icons';
+import { AiChatButton } from './components/chat/AiChatButton';
+import { AiChatModal } from './components/chat/AiChatModal';
 
-// A smaller internal component to access the context provided by AppProvider
+// This component renders the main application content for a logged-in user.
 const AppContent = () => {
-    const { user, editingItem, geminiItem, toast, confirmation, setConfirmation, view, initialSearch, setInitialSearch, isOnline, isSyncing } = useAppContext();
+    const { user, editingItem, geminiItem, view, initialSearch, setInitialSearch, isOnline, isSyncing, isAiChatOpen, setIsAiChatOpen } = useAppContext();
 
     if (!user) {
         // This should not be reached if the outer component handles the session correctly, but as a fallback.
@@ -42,11 +46,25 @@ const AppContent = () => {
             <main className="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
                 {view === 'home' && <HomePage />}
                 {view === 'watchlist' && <WatchlistPage initialSearch={initialSearch} setInitialSearch={setInitialSearch} />}
+                {view === 'updates' && <UpdatesPage />}
             </main>
             {editingItem && <EditItemModal />}
             {geminiItem && <GeminiModal />}
+            <AiChatButton />
+            <AiChatModal isOpen={isAiChatOpen} onClose={() => setIsAiChatOpen(false)} />
             <Footer currentView={view} />
-            
+        </div>
+    );
+};
+
+// This new component handles the main layout and renders global elements like toasts.
+const AppLayout = () => {
+    const { user, toast, confirmation, setConfirmation } = useAppContext();
+    
+    return (
+        <>
+            {!user ? <AuthPage /> : <AppContent />}
+
             {toast && (
                 <div role="status" aria-live="polite" className={`fixed bottom-5 right-5 left-5 sm:left-auto p-4 rounded-lg shadow-lg text-white text-center sm:text-left ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
                     {toast.message}
@@ -60,7 +78,7 @@ const AppContent = () => {
                     onClose={() => setConfirmation(null)}
                 />
             )}
-        </div>
+        </>
     );
 };
 
@@ -101,7 +119,7 @@ export default function App() {
     
     return (
         <AppProvider user={user}>
-            {!session ? <AuthPage /> : <AppContent />}
+            <AppLayout />
         </AppProvider>
     );
 }

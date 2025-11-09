@@ -7,7 +7,7 @@ export const Header: React.FC<{ currentView: string; }> = ({ currentView }) => {
     const { user, setView } = useAppContext();
     const [menuOpen, setMenuOpen] = useState(false);
 
-    const handleNav = (targetView: 'home' | 'watchlist') => {
+    const handleNav = (targetView: 'home' | 'watchlist' | 'updates') => {
         if (currentView === targetView) {
             // If already on the page, smooth scroll to top.
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -31,6 +31,7 @@ export const Header: React.FC<{ currentView: string; }> = ({ currentView }) => {
                             <div className="ml-10 flex items-baseline space-x-4">
                                 <button onClick={() => handleNav('home')} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${currentView === 'home' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}><Icon name="home" className="h-4 w-4"/> Home</button>
                                 <button onClick={() => handleNav('watchlist')} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${currentView === 'watchlist' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}><Icon name="list" className="h-4 w-4"/> Watchlist</button>
+                                <button onClick={() => handleNav('updates')} className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${currentView === 'updates' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}><Icon name="calendar" className="h-4 w-4"/> Updates</button>
                             </div>
                         </div>
                     </div>
@@ -60,6 +61,7 @@ export const Header: React.FC<{ currentView: string; }> = ({ currentView }) => {
                         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                             <button onClick={() => handleNav('home')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:bg-accent">Home</button>
                             <button onClick={() => handleNav('watchlist')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:bg-accent">Watchlist</button>
+                            <button onClick={() => handleNav('updates')} className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:bg-accent">Updates</button>
                         </div>
                         <div className="pt-4 pb-3 border-t border-border">
                              <div className="flex items-center px-5">

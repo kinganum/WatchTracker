@@ -12,14 +12,14 @@ For this to work, two things are required on the Supabase side:
 
 ## 2. Frontend Implementation
 
-The entire real-time logic is handled within the main `App.tsx` component.
+The entire real-time logic is handled within the main `contexts/AppContext.tsx` component.
 
 ### Subscribing to Changes
 
 A subscription is created as soon as a user is logged in.
 
 ```typescript
-// From App.tsx
+// From AppContext.tsx
 useEffect(() => {
     if (!user) return;
 
@@ -42,7 +42,7 @@ useEffect(() => {
     return () => {
         supabase.removeChannel(channel);
     };
-}, [user, fetchWatchlist]);
+}, [user]);
 ```
 
 ### Handling Events
@@ -51,7 +51,8 @@ The `payload` object from the callback contains all the information needed to up
 
 - **`INSERT`**:
   - When a new item is added, the `payload.new` object contains the complete database record.
-  - The app's logic includes a crucial step to reconcile optimistic updates. When a user adds an item, a temporary version is created locally with an ID like `temp-12345`. The `INSERT` handler finds this temporary item (by matching title and type) and replaces it with the final record from `payload.new`, which has the permanent UUID. This ensures the UI stays in sync.
+  - The app uses a robust reconciliation method for optimistic updates. When a user adds an item, a new UUID is generated on the client and the item is immediately added to the local state. This same UUID is sent to the database.
+  - When an `INSERT` event arrives, the handler checks if an item with that same ID already exists locally. If it does (meaning it's the same client's optimistic update), the event is ignored to prevent duplication. If the ID doesn't exist, the item is added to the state, correctly syncing additions from other devices.
 
 - **`UPDATE`**:
   - The `payload.new` object contains the updated item.
@@ -67,8 +68,8 @@ The real-time updates are coupled with UI enhancements for a smoother experience
 
 - **Optimistic Updates**: Most actions (add, delete, update) are applied to the local state *before* the API call completes. This makes the UI feel instantaneous. If the API call fails, the local state is reverted (rollbacked) to its original state.
 - **Auto-Scroll**: When a new item is added (especially via Smart Paste), the `scrollToId` state is updated. A `useEffect` hook then finds the corresponding item's DOM element and smoothly scrolls it into view.
-- **Highlight Animation**: Newly added items are given a temporary glowing animation (`animate-glow-neutral` or `animate-glow-anime`) to provide a clear visual cue of what just changed. The `newlyAddedIds` state array tracks which items to highlight. The highlight is removed after the animation completes.
+- **Highlight Animation**: Newly added items are given a temporary glowing animation (`animate-glow-neutral` or `animate-glow-anime`) to provide a clear visual cue of what just changed. The `highlightedIds` state array tracks which items to highlight. The highlight is removed after the animation completes.
 
 ## 4. Fallback
 
-The real-time system is robust, but there is an implicit fallback. If the WebSocket connection for real-time events is ever dropped, the data will be out of sync until the user performs an action or reloads the page. Upon a full page reload, `fetchWatchlist()` is always called, which guarantees that the latest state is fetched directly from the database.
+The real-time system is robust, but there is an implicit fallback. If the WebSocket connection for real-time events is ever dropped, the data will be out of sync until the user performs an action or reloads the page. Upon a full page reload, the app's initialization logic is always called, which guarantees that the latest state is fetched directly from the database and local cache.

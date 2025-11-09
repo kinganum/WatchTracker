@@ -1,11 +1,6 @@
 import { NewWatchlistItem, ItemType, SubType, Status, Language, ReleaseType, WatchlistItem } from '../types';
 import { SUB_TYPE_OPTIONS } from '../constants';
-
-const formatTitle = (title: string): string => {
-    if (!title) return '';
-    const trimmed = title.trim();
-    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-};
+import { formatTitle } from './textFormatters';
 
 const patterns = {
     season: /\b(?:s|season)\s?(\d+)\b/i,
@@ -48,22 +43,53 @@ const normalize = {
 };
 
 const isHeaderLine = (line: string): boolean => {
-    const lowerLine = line.toLowerCase();
-    const hasSubType = patterns.subType.test(lowerLine);
-    if (!hasSubType) return false;
+    const lowerLine = line.toLowerCase().trim();
+    if (!lowerLine) return false;
 
-    // A header should not contain item-specific markers like s1, e1, movie, series
     const hasItemMarkers = patterns.season.test(lowerLine) ||
                            patterns.episode.test(lowerLine) ||
                            patterns.part.test(lowerLine) ||
-                           patterns.type.test(lowerLine);
+                           /\s\d{1,2}$/.test(lowerLine); // Also check for standalone numbers
     
-    // Heuristic: if it has a sub_type and no other specific item markers, it's a header.
-    return hasSubType && !hasItemMarkers;
+    if (hasItemMarkers) return false;
+    
+    const hasAnyKeyword = patterns.type.test(lowerLine) ||
+                          patterns.status.test(lowerLine) ||
+                          patterns.releaseType.test(lowerLine) ||
+                          patterns.subType.test(lowerLine);
+                          
+    if (!hasAnyKeyword) return false;
+    
+    let tempLine = ` ${lowerLine} `;
+
+    // Greedily replace multi-word keywords first
+    const multiWordKeywords = ['tv series', 'continue old'];
+    for (const keyword of multiWordKeywords) {
+        tempLine = tempLine.replace(new RegExp(`\\b${keyword}\\b`, 'g'), ' ');
+    }
+    
+    const singleWords = tempLine.trim().split(/\s+/).filter(Boolean);
+
+    const allSingleKeywords = new Set([
+        ...['series', 'tv', 'movie', 'movies', 'film'],
+        ...Object.values(SubType).map(s => s.toLowerCase()),
+        ...['continue', 'continuing', 'contiune', 'watch', 'stopped', 'stop', 'complete', 'completed'],
+        ...['new', 'old']
+    ]);
+
+    const nonKeywordWords = singleWords.filter(word => !allSingleKeywords.has(word));
+    
+    // If there are no words left that aren't keywords, it's a header.
+    return nonKeywordWords.length === 0;
 };
+
 
 const parseHeader = (line: string): Partial<NewWatchlistItem> => {
     const defaults: Partial<NewWatchlistItem> = {};
+    
+    const typeMatch = line.match(patterns.type);
+    if (typeMatch) defaults.type = normalize.type(typeMatch[1] || typeMatch[0]);
+
     const subTypeMatch = line.match(patterns.subType);
     if (subTypeMatch) {
         const subType = normalize.subType(subTypeMatch[1] || subTypeMatch[0]);
@@ -110,7 +136,26 @@ const parseLine = (line: string, defaults: Partial<NewWatchlistItem>): { item: N
     extract('language', normalize.language);
     extract('releaseType', normalize.releaseType);
     
-    const title = formatTitle(currentLine.replace(/[|,-/]/g, ' ').replace(/\s+/g, ' ').trim());
+    let remainingLine = currentLine.replace(/[|,-/]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Strip parenthesized content like (Netflix)
+    remainingLine = remainingLine.replace(/\s?\(.*?\)\s?/g, ' ').trim();
+    
+    let standaloneNumber: number | undefined = undefined;
+
+    // Regex to find a standalone number (1-2 digits) at the end, possibly preceded by a space or dash.
+    const trailingNumberMatch = remainingLine.match(/(?:\s|-)(\d{1,2})$/);
+    
+    if (trailingNumberMatch && trailingNumberMatch[1]) {
+        const num = parseInt(trailingNumberMatch[1], 10);
+        // Heuristic to avoid matching parts of years or very large numbers.
+        if (num > 0 && num < 100) {
+            standaloneNumber = num;
+            // Remove the matched number and the preceding space/dash from the line
+            remainingLine = remainingLine.substring(0, trailingNumberMatch.index).trim();
+        }
+    }
+
+    const title = formatTitle(remainingLine);
 
     if (!title) {
         return { item: null, rawLine: line };
@@ -128,6 +173,15 @@ const parseLine = (line: string, defaults: Partial<NewWatchlistItem>): { item: N
         release_type: extracted.release_type || defaults.release_type || ReleaseType.NEW,
     };
     
+    // If a standalone number was found, apply it based on item type.
+    if (standaloneNumber !== undefined) {
+        if (finalItem.type === ItemType.MOVIES && finalItem.part === undefined) {
+            finalItem.part = standaloneNumber;
+        } else if (finalItem.type === ItemType.TV_SERIES && finalItem.season === undefined) {
+            finalItem.season = standaloneNumber;
+        }
+    }
+    
     return { item: finalItem, rawLine: '' };
 };
 
@@ -144,7 +198,7 @@ export const parseSmartPasteText = (
 
     for (const line of lines) {
         if (isHeaderLine(line)) {
-            currentHeaderDefaults = parseHeader(line);
+            currentHeaderDefaults = { ...currentHeaderDefaults, ...parseHeader(line) };
         } else {
             const { item, rawLine } = parseLine(line, currentHeaderDefaults);
             if(item) {
@@ -152,6 +206,15 @@ export const parseSmartPasteText = (
             } else if(rawLine) {
                 unparsable.push(rawLine);
             }
+        }
+    }
+
+    for (const item of parsedItems) {
+        if (!item.sub_type) {
+            item.sub_type = SubType.ANIME;
+        }
+        if (!item.language) {
+            item.language = Language.DUB;
         }
     }
     

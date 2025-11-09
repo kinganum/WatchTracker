@@ -1,15 +1,24 @@
 import React from 'react';
 import { useAppContext } from '../../contexts/AppContext';
 
-export const Footer: React.FC<{ currentView: 'home' | 'watchlist' }> = ({ currentView }) => {
+const FooterLink: React.FC<{children: React.ReactNode, onClick: () => void, 'aria-label': string}> = ({ children, onClick, 'aria-label': ariaLabel }) => (
+    <button onClick={onClick} aria-label={ariaLabel} className="text-muted-foreground hover:text-foreground transition-colors text-left focus:outline-none focus:ring-2 focus:ring-ring rounded-sm p-0.5 -m-0.5">
+        {children}
+    </button>
+);
+
+export const Footer: React.FC<{ currentView: 'home' | 'watchlist' | 'updates' }> = ({ currentView }) => {
     const { setView, setInitialListFilter } = useAppContext();
 
-    const handleNav = (target: 'home' | 'watchlist' | 'add-items' | 'favorites') => {
+    const handleNav = (target: 'home' | 'watchlist' | 'updates' | 'add-items' | 'favorites') => {
         if (target === 'home') {
             setView('home');
             window.scrollTo({ top: 0, behavior: 'auto' });
         } else if (target === 'watchlist') {
             setView('watchlist');
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        } else if (target === 'updates') {
+            setView('updates');
             window.scrollTo({ top: 0, behavior: 'auto' });
         } else if (target === 'add-items') {
             setView('home');
@@ -23,12 +32,6 @@ export const Footer: React.FC<{ currentView: 'home' | 'watchlist' }> = ({ curren
         }
     };
     
-    const FooterLink: React.FC<{children: React.ReactNode, onClick: () => void, 'aria-label': string}> = ({ children, onClick, 'aria-label': ariaLabel }) => (
-        <button onClick={onClick} aria-label={ariaLabel} className="text-muted-foreground hover:text-foreground transition-colors text-left focus:outline-none focus:ring-2 focus:ring-ring rounded-sm p-0.5 -m-0.5">
-            {children}
-        </button>
-    );
-
     return (
         <footer className="bg-background border-t border-border mt-auto">
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -43,6 +46,7 @@ export const Footer: React.FC<{ currentView: 'home' | 'watchlist' }> = ({ curren
                         <ul className="space-y-2 text-sm flex flex-col items-start">
                             <li><FooterLink onClick={() => handleNav('home')} aria-label="Navigate to Home page">Home</FooterLink></li>
                             <li><FooterLink onClick={() => handleNav('watchlist')} aria-label="Navigate to Watchlist page">Watchlist</FooterLink></li>
+                            <li><FooterLink onClick={() => handleNav('updates')} aria-label="Navigate to Updates page">Updates</FooterLink></li>
                             <li><FooterLink onClick={() => handleNav('add-items')} aria-label="Navigate to Add Items section">Add Items</FooterLink></li>
                             <li><FooterLink onClick={() => handleNav('favorites')} aria-label="Navigate to filtered Favorites view">Favorites</FooterLink></li>
                         </ul>

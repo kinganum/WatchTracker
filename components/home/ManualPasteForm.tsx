@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { NewWatchlistItem, ItemType, SubType, Status, Language, ReleaseType } from '../../types';
-import { useAppContext, formatTitle } from '../../contexts/AppContext';
+import { useAppContext } from '../../contexts/AppContext';
 import { TYPE_OPTIONS, SUB_TYPE_OPTIONS, STATUS_OPTIONS, LANGUAGE_OPTIONS, RELEASE_TYPE_OPTIONS } from '../../constants';
 import { Icon } from '../ui/Icons';
 import { FormInput } from '../ui/FormInput';
 import { FormSelect } from '../ui/FormSelect';
+import { formatTitle } from '../../utils/textFormatters';
 
 export const ManualPasteForm = () => {
     const { addItem, setView } = useAppContext();

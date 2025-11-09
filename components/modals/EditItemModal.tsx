@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { WatchlistItem } from '../../types';
-import { useAppContext, formatTitle } from '../../contexts/AppContext';
+import { useAppContext } from '../../contexts/AppContext';
 import { TYPE_OPTIONS, SUB_TYPE_OPTIONS, STATUS_OPTIONS, LANGUAGE_OPTIONS, RELEASE_TYPE_OPTIONS } from '../../constants';
 import { Icon } from '../ui/Icons';
 import { FormInput } from '../ui/FormInput';
 import { FormSelect } from '../ui/FormSelect';
+import { formatTitle } from '../../utils/textFormatters';
 
 export const EditItemModal = () => {
     const { editingItem, setEditingItem, updateItem, setHighlightedIds, setScrollToId } = useAppContext();

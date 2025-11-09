@@ -1,9 +1,44 @@
-import { WatchlistItem, SyncAction } from '../types';
+import { WatchlistItem, SyncAction, UpdateCacheEntry, UpcomingRelease } from '../types';
+
+// These types are for structuring the cache entry for the Discovery Hub.
+// They are defined here to avoid complex cross-service imports.
+export type ReleaseInfo = {
+    name: string;
+    status: string;
+    releaseDate: string;
+    expectedDate: string;
+    platform: string;
+};
+
+export type Recommendation = {
+    title: string;
+    description: string;
+    genre: string;
+    sub_type: string;
+    cast: string[];
+    platform: string;
+    dub: string;
+    item_type: 'TV Series' | 'Movie';
+    count: number;
+};
+
+export type DiscoveryCacheData = {
+    release?: ReleaseInfo;
+    recommendations?: Recommendation[];
+}
+
+export type DiscoveryCacheEntry = {
+    itemId: string;
+    data: DiscoveryCacheData;
+    timestamp: number;
+};
 
 const DB_NAME = 'WatchTrackerDB';
-const DB_VERSION = 2;
+const DB_VERSION = 4; // Incremented from 3 to 4
 const STORE_NAME = 'watchlist';
 const SYNC_QUEUE_STORE_NAME = 'sync_queue';
+const UPDATES_CACHE_STORE_NAME = 'updates_cache';
+const DISCOVERY_CACHE_STORE_NAME = 'discovery_cache'; // New store
 
 let db: IDBDatabase;
 
@@ -32,6 +67,13 @@ function openDB(): Promise<IDBDatabase> {
             }
             if (!dbInstance.objectStoreNames.contains(SYNC_QUEUE_STORE_NAME)) {
                 dbInstance.createObjectStore(SYNC_QUEUE_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            }
+            if (!dbInstance.objectStoreNames.contains(UPDATES_CACHE_STORE_NAME)) {
+                dbInstance.createObjectStore(UPDATES_CACHE_STORE_NAME, { keyPath: 'itemId' });
+            }
+            // Add the new store for the Discovery Hub cache
+            if (!dbInstance.objectStoreNames.contains(DISCOVERY_CACHE_STORE_NAME)) {
+                dbInstance.createObjectStore(DISCOVERY_CACHE_STORE_NAME, { keyPath: 'itemId' });
             }
         };
     });
@@ -133,6 +175,68 @@ export async function clearActionQueue(): Promise<void> {
         const transaction = db.transaction(SYNC_QUEUE_STORE_NAME, 'readwrite');
         const store = transaction.objectStore(SYNC_QUEUE_STORE_NAME);
         const request = store.clear();
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// --- Updates Cache Functions ---
+
+export async function getUpdateFromCache(itemId: string): Promise<UpdateCacheEntry | null> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(UPDATES_CACHE_STORE_NAME, 'readonly');
+        const store = transaction.objectStore(UPDATES_CACHE_STORE_NAME);
+        const request = store.get(itemId);
+
+        request.onsuccess = () => resolve(request.result as UpdateCacheEntry | null);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+export async function saveUpdateToCache(itemId: string, data: UpcomingRelease): Promise<void> {
+    const db = await openDB();
+    const entry: UpdateCacheEntry = { itemId, data, timestamp: Date.now() };
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(UPDATES_CACHE_STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(UPDATES_CACHE_STORE_NAME);
+        const request = store.put(entry);
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// --- Discovery Hub Cache Functions ---
+
+export async function getDiscoveryFromCache(itemId: string): Promise<DiscoveryCacheEntry | null> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(DISCOVERY_CACHE_STORE_NAME, 'readonly');
+        const store = transaction.objectStore(DISCOVERY_CACHE_STORE_NAME);
+        const request = store.get(itemId);
+
+        request.onsuccess = () => resolve(request.result as DiscoveryCacheEntry | null);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+export async function saveDiscoveryToCache(itemId: string, newData: DiscoveryCacheData): Promise<void> {
+    const db = await openDB();
+    const existingEntry = await getDiscoveryFromCache(itemId);
+    
+    const mergedData: DiscoveryCacheData = {
+        ...(existingEntry?.data || {}),
+        ...newData,
+    };
+    
+    const entry: DiscoveryCacheEntry = { itemId, data: mergedData, timestamp: Date.now() };
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(DISCOVERY_CACHE_STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(DISCOVERY_CACHE_STORE_NAME);
+        const request = store.put(entry);
 
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);

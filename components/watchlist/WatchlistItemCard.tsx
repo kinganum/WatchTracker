@@ -19,11 +19,13 @@ const getSubTypeIcon = (subType?: SubType): string => {
         case SubType.ANIME: return 'sparkles';
         case SubType.BOLLYWOOD: return 'music';
         case SubType.HOLLYWOOD: return 'clapperboard';
-        case SubType.ASIAN:
+        case SubType.KOREAN:
+        case SubType.JAPANESE:
         case SubType.TURKISH:
         case SubType.TOLLYWOOD:
         case SubType.KOLLYWOOD:
         case SubType.SANDALWOOD:
+        case SubType.CHINESE:
             return 'globe';
         default: return 'layers';
     }
@@ -77,7 +79,8 @@ export const WatchlistItemCard: React.FC<WatchlistItemCardProps> = React.memo(({
 
     const toggleFavorite = (e: React.MouseEvent) => {
         e.stopPropagation();
-        updateItem(item.id, { favorite: !item.favorite });
+        setHighlightedIds(current => [...current, item.id]);
+        updateItem(item.id, { favorite: !item.favorite }, { successMessage: null });
     };
     
     const handleCopyDetails = (e: React.MouseEvent) => {

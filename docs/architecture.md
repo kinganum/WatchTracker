@@ -72,10 +72,10 @@ Supabase provides the entire backend infrastructure.
 
 1.  User submits the "Add Item" form.
 2.  The `addItem` function is called.
-3.  A temporary item with a `temp-` ID is immediately added to the local React state. The UI updates instantly.
+3.  A new item with a client-generated UUID (`crypto.randomUUID()`) is immediately added to the local React state. This same UUID is sent to the database, making it the permanent ID. The UI updates instantly.
 4.  An API call is made to insert the item into the Supabase `watchlist` table.
-5.  **Success**: The real-time listener receives the `INSERT` event from Supabase. It replaces the temporary item in the local state with the final item from the database (which now has a real UUID).
-6.  **Failure**: The API call fails. The temporary item is removed from the local state (rollback), and an error toast is shown.
+5.  **Success**: The real-time listener receives the `INSERT` event from Supabase. On the originating client, this event is typically ignored because an item with the same UUID already exists in the local state. On other clients, the new item is added to the state, keeping them in sync.
+6.  **Failure**: The API call fails. The item with the client-generated UUID is removed from the local state (rollback), and an error toast is shown.
 
 ### C. Real-time Sync
 

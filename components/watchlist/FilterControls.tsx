@@ -38,6 +38,14 @@ export const FilterControls: React.FC<{
         }
     }
 
+    const toggleMultiSelect = () => {
+        if (multiSelect) {
+            // If turning multi-select off, clear selections
+            setSelectedItems([]);
+        }
+        setMultiSelect(!multiSelect);
+    };
+
     return (
          <div className="space-y-4 bg-card p-4 rounded-xl">
             <input type="text" name="search" placeholder="Search your watchlist..." value={filter.search} onChange={handleFilterChange} className="w-full p-3 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"/>
@@ -60,7 +68,7 @@ export const FilterControls: React.FC<{
                  <button onClick={clearFiltersAndSort} className="w-full md:w-auto px-4 py-2 text-sm font-medium text-muted-foreground bg-background border border-border rounded-lg hover:bg-accent">Clear Filters</button>
                  <div className="hidden md:block flex-grow"/>
                  <div className="flex gap-2 w-full md:w-auto pt-2 md:pt-0 border-t border-border md:border-none">
-                    <button onClick={() => setMultiSelect(!multiSelect)} className={`flex-grow md:flex-grow-0 px-4 py-2 text-sm font-medium rounded-lg border disabled:opacity-50 disabled:cursor-not-allowed ${multiSelect ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-foreground'}`}>
+                    <button onClick={toggleMultiSelect} className={`flex-grow md:flex-grow-0 px-4 py-2 text-sm font-medium rounded-lg border disabled:opacity-50 disabled:cursor-not-allowed ${multiSelect ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-foreground'}`}>
                         Multi Select
                     </button>
                     {multiSelect && selectedItems.length > 0 ? (

@@ -195,6 +195,13 @@ export const WatchlistPage: React.FC<{ initialSearch: string, setInitialSearch: 
         setActiveStatusFilter(null);
         scrollToTopResult(null, newShowFavorites);
     };
+
+    const handleAddNew = () => {
+        setView('home');
+        requestAnimationFrame(() => {
+            document.getElementById('add-items-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
     
     const counts = useMemo(() => ({
         [Status.WATCH]: watchlist.filter(i => i.status === Status.WATCH).length,
@@ -238,14 +245,14 @@ export const WatchlistPage: React.FC<{ initialSearch: string, setInitialSearch: 
                     aria-label={`Filter favorite items, ${counts.favorites} items`}
                 />
                 
-                <StatusCard
-                    title="Add New Items"
-                    icon="plus"
-                    onClick={() => setView('home')}
-                    iconBgClass="bg-primary/10" iconTextClass="text-primary"
-                    badgeBgClass="" badgeTextClass="" // Not used
+                <button
+                    onClick={handleAddNew}
+                    className="w-full flex items-center justify-center gap-3 p-4 bg-primary text-primary-foreground rounded-2xl shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary active:scale-95"
                     aria-label="Add new items"
-                />
+                >
+                    <Icon name="plus" className="h-5 w-5" />
+                    <span className="font-semibold text-base">Add New Items</span>
+                </button>
             </div>
            
             <FilterControls 

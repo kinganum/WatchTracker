@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppContext } from '../../contexts/AppContext';
-import { getGeminiInsights, Recommendation, ReleaseInfoResponse } from '../../services/geminiService';
+import { getGeminiInsights, Recommendation, ReleaseInfo, getMediaByPersonFromAi } from '../../services/geminiService';
 import { Icon } from '../ui/Icons';
+import { parseReleaseDate } from '../../utils/textFormatters';
+import { MediaDetails } from '../../types';
+import * as db from '../../services/db';
 
 // --- Sub-components for the Modal ---
 
-const RecommendationCard: React.FC<{ item: Recommendation; onCopy: (title: string) => void }> = ({ item, onCopy }) => {
+const RecommendationCard: React.FC<{ 
+    item: Recommendation; 
+    onCopy: (title: string) => void;
+    onCastClick: (personName: string) => void;
+}> = ({ item, onCopy, onCastClick }) => {
     const countLabel = item.item_type === 'TV Series' ? 'Seasons' : 'Parts';
     const castLabel = item.sub_type === 'Anime' ? 'Characters' : 'Cast';
     
@@ -23,10 +30,11 @@ const RecommendationCard: React.FC<{ item: Recommendation; onCopy: (title: strin
         <div className="space-y-2 text-sm">
             <p className="text-muted-foreground italic">"{item.description}"</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-                <span className="font-semibold">Genre: {item.genre}</span>
-                <span className="font-semibold">Language: {item.sub_type}</span>
+                <span className="font-semibold">Type: {item.item_type}</span>
+                <span className="font-semibold">Sub Type: {item.sub_type}</span>
             </div>
-             <div className="text-xs">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <span className="font-semibold">Genre: {item.genre}</span>
                 <span className="font-semibold">Dub: {item.dub || 'N/A'}</span>
             </div>
             {item.count > 0 && (
@@ -37,12 +45,16 @@ const RecommendationCard: React.FC<{ item: Recommendation; onCopy: (title: strin
              {item.cast && item.cast.length > 0 && (
                 <div>
                     <p className="font-semibold text-xs mt-1">{castLabel}:</p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
                         {item.cast.map(member => (
-                            <div key={member} className="flex items-center gap-1.5 bg-secondary px-2 py-0.5 rounded-full">
+                            <button 
+                                key={member} 
+                                onClick={() => onCastClick(member)}
+                                className="flex items-center gap-1.5 bg-secondary px-2 py-0.5 rounded-full hover:bg-primary/20 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                            >
                                 <Icon name="person" className="h-3 w-3 text-muted-foreground" />
                                 <span className="text-xs">{member}</span>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -56,94 +68,150 @@ const RecommendationCard: React.FC<{ item: Recommendation; onCopy: (title: strin
     </div>
 )};
 
-const ReleaseInfoTable: React.FC<{ data: Record<string, string> }> = ({ data }) => (
-    <div className="p-3 bg-background rounded-lg border border-border font-mono text-sm text-foreground">
-        {Object.entries(data).map(([key, value]) => {
-            // FIX: Coerce value to string before calling toLowerCase to prevent type errors.
-            if (!value || String(value).toLowerCase() === 'n/a') return null;
-            return (
-                 <div key={key} className="flex">
-                    <span className="w-28 flex-shrink-0 text-muted-foreground">{key}:</span>
-                    <span className="flex-grow">{value}</span>
-                </div>
-            )
-        })}
-    </div>
-);
+const ReleaseInfoDisplay: React.FC<{ data: ReleaseInfo }> = ({ data }) => {
+    const computedStatus = useMemo(() => {
+        const dateString = data.expectedDate || data.releaseDate;
+        if (!dateString || dateString === 'N/A') {
+            return data.status; // Fallback to AI status if no date
+        }
 
+        const releaseDate = parseReleaseDate(dateString);
+        if (releaseDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return releaseDate < today ? 'Released' : 'Unreleased';
+        }
+
+        return data.status; // Fallback if date is unparsable (e.g., "TBA")
+    }, [data.expectedDate, data.releaseDate, data.status]);
+
+
+    const fields: { label: string; value: string | undefined }[] = [
+        { label: 'Name', value: data.name },
+        { label: 'Status', value: computedStatus },
+        { label: 'Release Date', value: data.releaseDate },
+        { label: 'Expected Date', value: data.expectedDate },
+        { label: 'Platform', value: data.platform },
+    ];
+
+    return (
+        <div className="p-3 bg-background rounded-lg border border-border font-mono text-sm text-foreground space-y-1">
+            {fields.map(({ label, value }) => {
+                if (!value || String(value).toLowerCase() === 'n/a') {
+                    return null;
+                }
+                return (
+                    <div key={label} className="flex">
+                        <span className="w-28 flex-shrink-0 text-muted-foreground">{label}:</span>
+                        <span className="flex-grow">{value}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
 
 // --- Main Modal Component ---
+
+type PreviousState = {
+    title: string;
+    recommendations: Recommendation[];
+};
 
 export const GeminiModal = () => {
     const { geminiItem, setGeminiItem, showToast, isOnline } = useAppContext();
     const [activeTab, setActiveTab] = useState<'release' | 'recommendations'>('release');
     
-    const [releaseInfo, setReleaseInfo] = useState<ReleaseInfoResponse | null>(null);
+    // States for the currently displayed item's data
+    const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);
     const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
     
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
-    const parsedReleaseInfo = useMemo(() => {
-        if (!releaseInfo?.text) return null;
-        const lines = releaseInfo.text.split('\n').filter(line => line.includes(':'));
-        const info: Record<string, string> = {};
-        lines.forEach(line => {
-            const parts = line.split(':');
-            const key = parts[0].trim();
-            const value = parts.slice(1).join(':').trim();
-            if (key && value) {
-                info[key] = value;
-            }
-        });
-        return info;
-    }, [releaseInfo]);
+    const [promptText, setPromptText] = useState('');
+    const [previousState, setPreviousState] = useState<PreviousState | null>(null);
 
     const fetchData = useCallback(async (mode: 'release' | 'recommendations') => {
         if (!geminiItem) return;
 
-        if (!isOnline) {
-            setError("You are currently offline. Please connect to the internet to use the Discovery Hub.");
-            setLoading(false);
+        // Check component state first. If we already fetched for this item, don't do it again.
+        if (mode === 'release' && releaseInfo) {
+            setPromptText(`Displaying release info for "${geminiItem.title}".`);
+            return;
+        }
+        if (mode === 'recommendations' && recommendations.length > 0 && !previousState) {
+            setPromptText(`Displaying recommendations for "${geminiItem.title}".`);
             return;
         }
 
         setLoading(true);
         setError('');
+        setPromptText(`Checking cache for "${geminiItem.title}"...`);
 
+        const cachedEntry = await db.getDiscoveryFromCache(geminiItem.id);
+        const cachedData = cachedEntry?.data?.[mode];
+
+        if (cachedData) {
+            if (mode === 'release') setReleaseInfo(cachedData as ReleaseInfo);
+            if (mode === 'recommendations') setRecommendations(cachedData as Recommendation[]);
+            setPromptText(`Displaying cached data for "${geminiItem.title}".`);
+            setLoading(false);
+            return;
+        }
+
+        if (!isOnline) {
+            setError("You are offline and no cached data is available for this item.");
+            setLoading(false);
+            return;
+        }
+
+        setPromptText(mode === 'release' 
+            ? `Asking Gemini for the release status of "${geminiItem.title}"...`
+            : `Asking Gemini for recommendations similar to "${geminiItem.title}"...`
+        );
+        
         const result = await getGeminiInsights(geminiItem, mode);
         
         if (typeof result === 'string') {
             setError(result);
-        } else if (mode === 'release' && 'text' in result) {
-            setReleaseInfo(result);
-        } else if (mode === 'recommendations' && Array.isArray(result)) {
-            setRecommendations(result);
         } else {
-            setError('Received unexpected data format.');
+            if (mode === 'release' && 'status' in result) {
+                const data = result as ReleaseInfo;
+                setReleaseInfo(data);
+                await db.saveDiscoveryToCache(geminiItem.id, { release: data });
+            } else if (mode === 'recommendations' && Array.isArray(result)) {
+                const data = result as Recommendation[];
+                setRecommendations(data);
+                await db.saveDiscoveryToCache(geminiItem.id, { recommendations: data });
+            } else {
+                setError('Received unexpected data format.');
+            }
         }
-
         setLoading(false);
-    }, [geminiItem, isOnline]);
+    }, [geminiItem, isOnline, releaseInfo, recommendations, previousState]);
 
+    // Effect to reset state when the item changes.
     useEffect(() => {
         if (geminiItem) {
             setActiveTab('release');
+            setError('');
+            setPreviousState(null);
+            // Reset data when opening the modal for a new item
             setReleaseInfo(null);
             setRecommendations([]);
-            setError('');
-            fetchData('release');
         }
-    }, [geminiItem, fetchData]);
+    }, [geminiItem]);
+
+    // Effect to fetch data when the item or active tab changes.
+    useEffect(() => {
+        if (geminiItem) {
+            fetchData(activeTab);
+        }
+    }, [geminiItem, activeTab, fetchData]);
 
     const handleTabClick = (tab: 'release' | 'recommendations') => {
         setActiveTab(tab);
-        if (tab === 'recommendations' && recommendations.length === 0 && !error) {
-            fetchData('recommendations');
-        }
-        if (tab === 'release' && !releaseInfo && !error) {
-            fetchData('release');
-        }
+        setPreviousState(null);
     };
 
     const handleCopyTitle = (title: string) => {
@@ -154,13 +222,51 @@ export const GeminiModal = () => {
         });
     };
 
+    const handleCastClick = async (personName: string) => {
+        if (!isOnline) {
+            setError("You are offline. Cannot fetch new data.");
+            return;
+        }
+        setLoading(true);
+        setError('');
+        setPromptText(`Finding media starring ${personName}...`);
+
+        if (geminiItem) {
+            setPreviousState({ title: geminiItem.title, recommendations });
+        }
+
+        const result = await getMediaByPersonFromAi(personName);
+        if (typeof result === 'string') {
+            setError(result);
+        } else {
+            const newRecommendations: Recommendation[] = (result as MediaDetails[]).map(d => ({
+                title: d.name,
+                description: `A ${d.genre} ${d.type.toLowerCase().includes('movie') ? 'movie' : 'series'}.`,
+                genre: d.genre,
+                sub_type: d.sub_type,
+                cast: d.cast,
+                platform: d.platform,
+                dub: d.language.toLowerCase().includes('dub') ? 'Available' : 'Not Available',
+                item_type: d.type.toLowerCase().includes('movie') ? 'Movie' : 'TV Series',
+                count: d.count,
+            }));
+            setRecommendations(newRecommendations);
+        }
+        setLoading(false);
+    };
+
+    const handleBackClick = () => {
+        if (previousState) {
+            setRecommendations(previousState.recommendations);
+            setPromptText(`Asking Gemini for recommendations similar to "${previousState.title}"...`);
+            setPreviousState(null);
+            setError('');
+        }
+    };
+
     const handleClose = () => setGeminiItem(null);
 
     if (!geminiItem) return null;
-
-    const promptText = activeTab === 'release' 
-        ? `Asking Gemini for the release status of "${geminiItem.title}"...`
-        : `Asking Gemini for recommendations similar to "${geminiItem.title}"...`;
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -184,10 +290,17 @@ export const GeminiModal = () => {
 
                 <div className="overflow-y-auto pr-2 space-y-4 py-4">
                     <div className="bg-secondary p-3 rounded-lg">
-                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            PROMPT
-                            {loading && <Icon name="loader" className="h-4 w-4" />}
-                        </p>
+                        <div className="flex justify-between items-center">
+                            <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                PROMPT
+                                {loading && <Icon name="loader" className="h-4 w-4" />}
+                            </p>
+                            {previousState && activeTab === 'recommendations' && (
+                                <button onClick={handleBackClick} className="text-xs font-semibold text-primary hover:underline">
+                                    &larr; Back to "{previousState.title}"
+                                </button>
+                            )}
+                        </div>
                         <p className="text-foreground italic mt-1 text-sm">{promptText}</p>
                     </div>
                     
@@ -196,29 +309,15 @@ export const GeminiModal = () => {
                         <div className="flex-grow">
                             {error && <p className="text-red-500">{error}</p>}
 
-                            {!loading && !error && activeTab === 'release' && parsedReleaseInfo && (
+                            {!loading && !error && activeTab === 'release' && releaseInfo && (
                                 <div className="space-y-3">
-                                    <ReleaseInfoTable data={parsedReleaseInfo} />
-                                    {releaseInfo?.sources && releaseInfo.sources.length > 0 && (
-                                        <div>
-                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1.5">Sources</h4>
-                                            <ul className="space-y-1">
-                                                {releaseInfo.sources.map((source, index) => (
-                                                    <li key={index}>
-                                                        <a href={source.web?.uri} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate block">
-                                                           {index + 1}. {source.web?.title || source.web?.uri}
-                                                        </a>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    )}
+                                    <ReleaseInfoDisplay data={releaseInfo} />
                                 </div>
                             )}
 
                             {!loading && !error && activeTab === 'recommendations' && (
                                 <div className="space-y-2">
-                                    {recommendations.map((rec) => <RecommendationCard key={rec.title} item={rec} onCopy={handleCopyTitle} />)}
+                                    {recommendations.map((rec) => <RecommendationCard key={rec.title} item={rec} onCopy={handleCopyTitle} onCastClick={handleCastClick} />)}
                                 </div>
                             )}
                         </div>
